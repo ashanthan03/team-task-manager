@@ -1,0 +1,295 @@
+QUICK COMMANDS REFERENCE
+=======================
+
+Copy and paste these commands to set up and deploy your application.
+
+LOCAL SETUP (Run these commands in order)
+==========================================
+
+1. Navigate to project:
+   cd C:\Users\ashan\AppData\Local\Temp\opencode\team-task-manager
+
+2. Install all dependencies:
+   npm run install-all
+
+3. Update MongoDB URI in backend/.env:
+   (Edit backend/.env and update MONGODB_URI)
+
+4. Start the application:
+   npm run dev
+
+   Or run separately:
+   Terminal 1: npm run backend:dev
+   Terminal 2: npm run frontend:dev
+
+5. Test the application:
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:5000/api/health
+
+INDIVIDUAL COMMANDS
+====================
+
+Backend Only:
+  npm run backend:dev      # Development with auto-reload
+  npm run backend:start    # Production mode
+
+Frontend Only:
+  npm run frontend:dev     # Development server
+  npm run frontend:build   # Build for production
+
+Install Dependencies:
+  npm run install-all      # Install everything
+  cd backend && npm install
+  cd frontend && npm install
+
+GITHUB SETUP (One-time)
+=======================
+
+1. Initialize git:
+   git init
+
+2. Add all files:
+   git add .
+
+3. Create first commit:
+   git commit -m "Initial commit: Team Task Manager"
+
+4. Add GitHub remote:
+   git remote add origin https://github.com/YOUR_USERNAME/team-task-manager.git
+
+5. Rename branch to main (if needed):
+   git branch -M main
+
+6. Push to GitHub:
+   git push -u origin main
+
+SUBSEQUENT PUSHES
+=================
+
+1. Make changes
+2. Stage files:
+   git add .
+
+3. Commit:
+   git commit -m "Your commit message"
+
+4. Push:
+   git push
+
+ENVIRONMENT VARIABLES
+====================
+
+Backend (.env):
+  PORT=5000
+  MONGODB_URI=mongodb://localhost:27017/team-task-manager
+  JWT_SECRET=your-secret-key-12345
+  JWT_EXPIRE=7d
+
+For MongoDB Atlas:
+  MONGODB_URI=mongodb+srv://admin:PASSWORD@cluster0.mongodb.net/team-task-manager?retryWrites=true&w=majority
+
+Frontend (.env):
+  VITE_API_URL=http://localhost:5000/api
+
+Frontend Production (.env.production):
+  VITE_API_URL=https://your-railway-backend.railway.app/api
+
+DEPLOYMENT COMMANDS
+===================
+
+Build for production:
+  cd frontend && npm run build
+
+This creates a dist/ folder with optimized code.
+
+Testing production build:
+  cd frontend && npm run preview
+
+TROUBLESHOOTING COMMANDS
+========================
+
+Check if port is in use:
+  Windows: netstat -ano | findstr :5000
+  
+Kill process on port (Windows):
+  taskkill /PID <PID> /F
+
+Clear npm cache:
+  npm cache clean --force
+
+Reinstall dependencies:
+  rm -r node_modules package-lock.json
+  npm install
+
+Check Node version:
+  node --version
+
+Check npm version:
+  npm --version
+
+DATABASE COMMANDS (MongoDB)
+===========================
+
+Start MongoDB (Windows):
+  mongod
+
+Check MongoDB status:
+  mongo --eval "db.adminCommand('ping')"
+
+DATABASE OPERATIONS
+===================
+
+Connect to MongoDB locally:
+  mongo
+
+Connect to MongoDB Atlas:
+  Use connection string in .env
+
+View databases:
+  show dbs
+
+Use specific database:
+  use team-task-manager
+
+View collections:
+  show collections
+
+View documents:
+  db.users.find()
+  db.projects.find()
+  db.tasks.find()
+
+GIT USEFUL COMMANDS
+===================
+
+Check status:
+  git status
+
+View commit history:
+  git log --oneline
+
+View changes:
+  git diff
+
+Undo last commit:
+  git revert HEAD
+
+Create new branch:
+  git checkout -b feature-name
+
+Switch branch:
+  git checkout branch-name
+
+RAILWAY DEPLOYMENT (After GitHub setup)
+=======================================
+
+1. Go to https://railway.app
+2. Create new project
+3. Deploy from GitHub
+4. Select repository
+5. Add environment variables
+6. Deploy
+
+Add environment variable in Railway:
+  PORT=5000
+  MONGODB_URI=your_connection_string
+  JWT_SECRET=your_secret
+  JWT_EXPIRE=7d
+
+TESTING COMMANDS
+================
+
+Test API health:
+  curl http://localhost:5000/api/health
+
+Test signup:
+  curl -X POST http://localhost:5000/api/auth/signup \
+    -H "Content-Type: application/json" \
+    -d '{"name":"Test","email":"test@example.com","password":"test123"}'
+
+Test login:
+  curl -X POST http://localhost:5000/api/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"email":"test@example.com","password":"test123"}'
+
+MONITORING COMMANDS
+===================
+
+View Node process:
+  ps aux | grep node
+
+Check resource usage:
+  Task Manager (Windows) or Activity Monitor (Mac)
+
+View npm packages:
+  npm list
+
+Check for security vulnerabilities:
+  npm audit
+
+Update packages:
+  npm update
+
+CLEANUP COMMANDS
+================
+
+Remove node_modules:
+  rm -r node_modules
+
+Remove dist:
+  rm -r dist
+
+Remove lock files:
+  rm package-lock.json
+
+FINAL SUBMISSION COMMANDS
+=========================
+
+1. Ensure everything is pushed:
+   git status
+
+2. Get repository URL:
+   git remote -v
+
+3. Get deployment URL:
+   (From Railway dashboard)
+
+4. List all files:
+   git ls-files
+
+QUICK REFERENCE URLS
+====================
+
+Frontend (local): http://localhost:3000
+Backend (local): http://localhost:5000
+API Health: http://localhost:5000/api/health
+
+GitHub: https://github.com/YOUR_USERNAME/team-task-manager
+Railway: https://railway.app
+MongoDB Atlas: https://www.mongodb.com/cloud/atlas
+
+NOTES
+=====
+
+• Keep .env files in .gitignore (already configured)
+• Never commit passwords or API keys
+• Always use strong JWT_SECRET in production
+• Update VITE_API_URL after Railway deployment
+• Test locally before pushing to GitHub
+• Test on Railway before submitting
+
+TIPS
+====
+
+• Use 'npm run dev' to run everything at once
+• Check browser console for frontend errors
+• Check terminal for backend errors
+• Use Railway logs for production issues
+• Always restart server after .env changes
+
+═══════════════════════════════════════════════════════════════════════
+
+For detailed guides, see:
+- QUICK_START.md (setup guide)
+- DEPLOYMENT_RAILWAY.md (deployment guide)
+- README.txt (comprehensive documentation)
