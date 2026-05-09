@@ -336,7 +336,7 @@ This project is open source and available under the MIT License.
 
 ## 👤 Author
 
-**Ashan** - Full Stack Developer  
+**Shanthan Kumar** - Full Stack Developer  
 📧 Email: [ashanthan03@gmail.com](mailto:ashanthan03@gmail.com)
 
 - GitHub: [@ashanthan03](https://github.com/ashanthan03)
