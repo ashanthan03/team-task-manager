@@ -12,8 +12,8 @@ exports.createTask = async (req, res) => {
       });
     }
 
-    // Check if project exists and user has access
-    const project = await Project.findById(projectId);
+    // Check if project exists and user has access - use .lean() for faster read
+    const project = await Project.findById(projectId).lean();
     if (!project) {
       return res.status(404).json({
         success: false,
@@ -21,8 +21,8 @@ exports.createTask = async (req, res) => {
       });
     }
 
-    const isOwner = project.owner._id.toString() === req.user.id;
-    const isMember = project.members.some(m => m.user._id.toString() === req.user.id);
+    const isOwner = project.owner.toString() === req.user.id;
+    const isMember = project.members.some(m => m.user.toString() === req.user.id);
 
     if (!isOwner && !isMember && req.user.role !== 'admin') {
       return res.status(403).json({
@@ -40,9 +40,15 @@ exports.createTask = async (req, res) => {
       dueDate
     });
 
+    // Populate for response
+    const populatedTask = await Task.findById(task._id)
+      .populate('assignedTo', 'name email')
+      .populate('createdBy', 'name email')
+      .populate('project', 'name');
+
     res.status(201).json({
       success: true,
-      task
+      task: populatedTask
     });
   } catch (error) {
     res.status(500).json({
@@ -54,12 +60,36 @@ exports.createTask = async (req, res) => {
 
 exports.getTasks = async (req, res) => {
   try {
-    const { projectId, status, priority } = req.query;
+    const { projectId, status, priority, page = 1, limit = 20 } = req.query;
     let filter = {};
 
+    // SECURITY: Only fetch tasks from projects user has access to
     if (projectId) {
+      // Verify user has access to this project
+      const project = await Project.findById(projectId)
+        .select('owner members.user')
+        .lean();
+      
+      if (!project) {
+        return res.status(404).json({
+          success: false,
+          message: 'Project not found'
+        });
+      }
+
+      const isOwner = project.owner.toString() === req.user.id;
+      const isMember = project.members.some(m => m.user.toString() === req.user.id);
+
+      if (!isOwner && !isMember && req.user.role !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to access tasks in this project'
+        });
+      }
+
       filter.project = projectId;
     }
+
     if (status) {
       filter.status = status;
     }
@@ -67,14 +97,27 @@ exports.getTasks = async (req, res) => {
       filter.priority = priority;
     }
 
-    const tasks = await Task.find(filter).sort({ createdAt: -1 });
+    const skip = (page - 1) * limit;
+    
+    // Use .lean() for list operations and selective population
+    const tasks = await Task.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate('assignedTo', 'name email')
+      .populate('createdBy', 'name email')
+      .populate('project', 'name')
+      .lean();
 
-    // Update overdue status
-    tasks.forEach(task => task.updateOverdueStatus());
+    const totalCount = await Task.countDocuments(filter);
 
     res.status(200).json({
       success: true,
       count: tasks.length,
+      totalCount,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(totalCount / limit),
       tasks
     });
   } catch (error) {
@@ -87,7 +130,11 @@ exports.getTasks = async (req, res) => {
 
 exports.getTaskById = async (req, res) => {
   try {
-    const task = await Task.findById(req.params.id);
+    // Add selective population
+    const task = await Task.findById(req.params.id)
+      .populate('assignedTo', 'name email')
+      .populate('createdBy', 'name email')
+      .populate('project', 'name');
 
     if (!task) {
       return res.status(404).json({
@@ -95,8 +142,6 @@ exports.getTaskById = async (req, res) => {
         message: 'Task not found'
       });
     }
-
-    task.updateOverdueStatus();
 
     res.status(200).json({
       success: true,
@@ -112,7 +157,8 @@ exports.getTaskById = async (req, res) => {
 
 exports.updateTask = async (req, res) => {
   try {
-    let task = await Task.findById(req.params.id);
+    // Use .lean() for read-only authorization check
+    let task = await Task.findById(req.params.id).lean();
 
     if (!task) {
       return res.status(404).json({
@@ -121,14 +167,16 @@ exports.updateTask = async (req, res) => {
       });
     }
 
-    // Get project to check membership
-    const project = await Project.findById(task.project);
+    // Get project to check membership - use .lean() and only select necessary fields
+    const project = await Project.findById(task.project)
+      .select('owner members.user')
+      .lean();
     
     // Check authorization - creator, assignee, project owner, project member, or admin can update
-    const isCreator = task.createdBy._id.toString() === req.user.id;
-    const isAssignee = task.assignedTo && task.assignedTo._id.toString() === req.user.id;
-    const isProjectOwner = project && project.owner._id.toString() === req.user.id;
-    const isProjectMember = project && project.members.some(m => m.user._id.toString() === req.user.id);
+    const isCreator = task.createdBy.toString() === req.user.id;
+    const isAssignee = task.assignedTo && task.assignedTo.toString() === req.user.id;
+    const isProjectOwner = project && project.owner.toString() === req.user.id;
+    const isProjectMember = project && project.members.some(m => m.user.toString() === req.user.id);
     const isAdmin = req.user.role === 'admin';
 
     if (!isCreator && !isAssignee && !isProjectOwner && !isProjectMember && !isAdmin) {
@@ -140,21 +188,26 @@ exports.updateTask = async (req, res) => {
 
     const { title, description, status, priority, dueDate, assignedTo } = req.body;
 
-    if (title) task.title = title;
-    if (description) task.description = description;
-    if (status) task.status = status;
-    if (priority) task.priority = priority;
-    if (dueDate) task.dueDate = dueDate;
-    if (assignedTo !== undefined) task.assignedTo = assignedTo || null;
+    const updateData = {};
+    if (title) updateData.title = title;
+    if (description) updateData.description = description;
+    if (status) updateData.status = status;
+    if (priority) updateData.priority = priority;
+    if (dueDate) updateData.dueDate = dueDate;
+    if (assignedTo !== undefined) updateData.assignedTo = assignedTo || null;
+    updateData.updatedAt = new Date();
 
-    task.updateOverdueStatus();
-    task.updatedAt = new Date();
-
-    task = await task.save();
+    const updatedTask = await Task.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    ).populate('assignedTo', 'name email')
+    .populate('createdBy', 'name email')
+    .populate('project', 'name');
 
     res.status(200).json({
       success: true,
-      task
+      task: updatedTask
     });
   } catch (error) {
     res.status(500).json({
@@ -166,7 +219,10 @@ exports.updateTask = async (req, res) => {
 
 exports.deleteTask = async (req, res) => {
   try {
-    const task = await Task.findById(req.params.id);
+    // Use .lean() for read-only authorization check
+    const task = await Task.findById(req.params.id)
+      .select('createdBy')
+      .lean();
 
     if (!task) {
       return res.status(404).json({
@@ -175,8 +231,8 @@ exports.deleteTask = async (req, res) => {
       });
     }
 
-    // Check authorization - creator, project owner, or admin can delete
-    const isCreator = task.createdBy._id.toString() === req.user.id;
+    // Check authorization - creator or admin can delete
+    const isCreator = task.createdBy.toString() === req.user.id;
 
     if (!isCreator && req.user.role !== 'admin') {
       return res.status(403).json({
@@ -201,61 +257,117 @@ exports.deleteTask = async (req, res) => {
 
 exports.getDashboard = async (req, res) => {
   try {
-    // Get all projects where user is owner or member
+    // Get all projects where user is owner or member (lean for faster queries)
     const userProjects = await Project.find({
       $or: [
         { owner: req.user.id },
         { 'members.user': req.user.id }
       ]
-    });
+    }).lean();
 
     const projectIds = userProjects.map(p => p._id);
 
-    // Get tasks statistics
-    const totalTasks = await Task.countDocuments({
-      project: { $in: projectIds }
-    });
+    if (projectIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        dashboard: {
+          totalProjects: 0,
+          totalTasks: 0,
+          completedTasks: 0,
+          completionPercentage: 0,
+          overdueCount: 0,
+          recentTasks: [],
+          myTasks: []
+        }
+      });
+    }
 
-    const completedTasks = await Task.countDocuments({
-      project: { $in: projectIds },
-      status: 'completed'
-    });
-
-    const overdueTasks = await Task.find({
-      project: { $in: projectIds },
-      status: { $ne: 'completed' }
-    });
-
-    // Count overdue
-    let overdueCount = 0;
-    overdueTasks.forEach(task => {
-      if (task.dueDate && new Date() > task.dueDate) {
-        overdueCount++;
+    // Use aggregation for dashboard stats - much more efficient than separate queries
+    const dashboardStats = await Task.aggregate([
+      {
+        $match: {
+          project: { $in: projectIds }
+        }
+      },
+      {
+        $facet: {
+          stats: [
+            {
+              $group: {
+                _id: null,
+                totalTasks: { $sum: 1 },
+                completedTasks: {
+                  $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+                },
+                overdueCount: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $lt: ['$dueDate', new Date()] },
+                          { $ne: ['$status', 'completed'] }
+                        ]
+                      },
+                      1,
+                      0
+                    ]
+                  }
+                }
+              }
+            }
+          ],
+          recentTasks: [
+            { $sort: { createdAt: -1 } },
+            { $limit: 10 },
+            { $lookup: { from: 'users', localField: 'assignedTo', foreignField: '_id', as: 'assignedTo' } },
+            { $lookup: { from: 'users', localField: 'createdBy', foreignField: '_id', as: 'createdBy' } },
+            { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'project' } },
+            { $unwind: { path: '$assignedTo', preserveNullAndEmptyArrays: true } },
+            { $unwind: { path: '$createdBy', preserveNullAndEmptyArrays: true } },
+            { $unwind: { path: '$project', preserveNullAndEmptyArrays: true } },
+            {
+              $project: {
+                title: 1,
+                description: 1,
+                status: 1,
+                priority: 1,
+                dueDate: 1,
+                createdAt: 1,
+                assignedTo: { name: 1, email: 1 },
+                createdBy: { name: 1, email: 1 },
+                project: { name: 1 }
+              }
+            }
+          ]
+        }
       }
-    });
+    ]);
 
-    // Get recent tasks
-    const recentTasks = await Task.find({
-      project: { $in: projectIds }
-    })
-      .sort({ createdAt: -1 })
-      .limit(10);
-
-    // Get tasks assigned to user
+    // Get user's tasks separately
     const myTasks = await Task.find({
       assignedTo: req.user.id
     })
-      .sort({ dueDate: 1 });
+      .sort({ dueDate: 1 })
+      .limit(10)
+      .populate('project', 'name')
+      .populate('assignedTo', 'name email')
+      .lean();
+
+    const stats = dashboardStats[0].stats[0] || {
+      totalTasks: 0,
+      completedTasks: 0,
+      overdueCount: 0
+    };
 
     res.status(200).json({
       success: true,
       dashboard: {
         totalProjects: userProjects.length,
-        totalTasks,
-        completedTasks,
-        completionPercentage: totalTasks > 0 ? ((completedTasks / totalTasks) * 100).toFixed(2) : 0,
-        overdueCount,
-        recentTasks,
+        totalTasks: stats.totalTasks,
+        completedTasks: stats.completedTasks,
+        completionPercentage: stats.totalTasks > 0 ? ((stats.completedTasks / stats.totalTasks) * 100).toFixed(2) : 0,
+        overdueCount: stats.overdueCount,
+        recentTasks: dashboardStats[0].recentTasks,
         myTasks
       }
     });

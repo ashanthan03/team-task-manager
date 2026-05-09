@@ -41,15 +41,7 @@ const projectSchema = new mongoose.Schema({
   }
 });
 
-projectSchema.pre(/^find/, function(next) {
-  this.populate({
-    path: 'owner',
-    select: 'name email'
-  }).populate({
-    path: 'members.user',
-    select: 'name email'
-  });
-  next();
-});
+// Removed auto-population hook for performance
+// Population is now done selectively in controllers
 
 module.exports = mongoose.model('Project', projectSchema);

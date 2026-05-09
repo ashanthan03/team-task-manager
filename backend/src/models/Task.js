@@ -13,11 +13,13 @@ const taskSchema = new mongoose.Schema({
   project: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Project',
-    required: true
+    required: true,
+    index: true
   },
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'User',
+    index: true
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -27,7 +29,8 @@ const taskSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['todo', 'in-progress', 'completed', 'blocked'],
-    default: 'todo'
+    default: 'todo',
+    index: true
   },
   priority: {
     type: String,
@@ -35,7 +38,8 @@ const taskSchema = new mongoose.Schema({
     default: 'medium'
   },
   dueDate: {
-    type: Date
+    type: Date,
+    index: true
   },
   isOverdue: {
     type: Boolean,
@@ -43,7 +47,8 @@ const taskSchema = new mongoose.Schema({
   },
   createdAt: {
     type: Date,
-    default: Date.now
+    default: Date.now,
+    index: true
   },
   updatedAt: {
     type: Date,
@@ -59,15 +64,7 @@ taskSchema.methods.updateOverdueStatus = function() {
   return this;
 };
 
-taskSchema.pre(/^find/, function(next) {
-  this.populate({
-    path: 'assignedTo createdBy',
-    select: 'name email'
-  }).populate({
-    path: 'project',
-    select: 'name'
-  });
-  next();
-});
+// Removed auto-population hook for performance
+// Population is now done selectively in controllers
 
 module.exports = mongoose.model('Task', taskSchema);
