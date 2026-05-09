@@ -336,10 +336,12 @@ This project is open source and available under the MIT License.
 
 ## 👤 Author
 
-**Ashan** - Full Stack Developer
+**Ashan** - Full Stack Developer  
+📧 Email: [ashanthan03@gmail.com](mailto:ashanthan03@gmail.com)
 
 - GitHub: [@ashanthan03](https://github.com/ashanthan03)
 - Project: [Team Task Manager](https://github.com/ashanthan03/team-task-manager)
+- Email: ashanthan03@gmail.com
 
 ---
 
@@ -366,4 +368,4 @@ This project demonstrates:
 
 ---
 
-**Made with ❤️ by Ashan**
+**Made with ❤️ by Shanthan Kumar**
