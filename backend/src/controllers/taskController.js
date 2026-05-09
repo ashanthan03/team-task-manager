@@ -121,11 +121,17 @@ exports.updateTask = async (req, res) => {
       });
     }
 
-    // Check authorization - creator, assignee, project owner, or admin can update
+    // Get project to check membership
+    const project = await Project.findById(task.project);
+    
+    // Check authorization - creator, assignee, project owner, project member, or admin can update
     const isCreator = task.createdBy._id.toString() === req.user.id;
     const isAssignee = task.assignedTo && task.assignedTo._id.toString() === req.user.id;
+    const isProjectOwner = project && project.owner._id.toString() === req.user.id;
+    const isProjectMember = project && project.members.some(m => m.user._id.toString() === req.user.id);
+    const isAdmin = req.user.role === 'admin';
 
-    if (!isCreator && !isAssignee && req.user.role !== 'admin') {
+    if (!isCreator && !isAssignee && !isProjectOwner && !isProjectMember && !isAdmin) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to update this task'
@@ -139,7 +145,7 @@ exports.updateTask = async (req, res) => {
     if (status) task.status = status;
     if (priority) task.priority = priority;
     if (dueDate) task.dueDate = dueDate;
-    if (assignedTo) task.assignedTo = assignedTo;
+    if (assignedTo !== undefined) task.assignedTo = assignedTo || null;
 
     task.updateOverdueStatus();
     task.updatedAt = new Date();

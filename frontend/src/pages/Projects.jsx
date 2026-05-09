@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { projectsAPI, tasksAPI } from '../services/api';
+import { projectsAPI } from '../services/api';
 import Navigation from '../components/Navigation';
+import ProjectCard from '../components/ProjectCard';
 
 export default function Projects() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newProject, setNewProject] = useState({ name: '', description: '' });
   const [showForm, setShowForm] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchProjects();
@@ -18,6 +20,7 @@ export default function Projects() {
       setProjects(response.data.projects);
     } catch (error) {
       console.error('Failed to fetch projects:', error);
+      setError('Failed to load projects');
     } finally {
       setLoading(false);
     }
@@ -25,6 +28,7 @@ export default function Projects() {
 
   const handleCreateProject = async (e) => {
     e.preventDefault();
+    setError('');
     try {
       await projectsAPI.create(newProject);
       setNewProject({ name: '', description: '' });
@@ -32,88 +36,122 @@ export default function Projects() {
       fetchProjects();
     } catch (error) {
       console.error('Failed to create project:', error);
+      setError(error.response?.data?.message || 'Failed to create project');
     }
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return (
+      <>
+        <Navigation />
+        <div className="flex justify-center items-center h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading projects...</p>
+          </div>
+        </div>
+      </>
+    );
   }
 
   return (
     <>
       <Navigation />
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Projects</h1>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          {/* Page Header */}
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">My Projects</h1>
+            <p className="text-gray-600">Manage and collaborate on your team projects</p>
+          </div>
+
+          {/* Create Project Button */}
+          <div className="flex justify-end mb-6">
             <button
               onClick={() => setShowForm(!showForm)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              className="btn-primary"
             >
-              {showForm ? 'Cancel' : 'New Project'}
+              {showForm ? '✕ Cancel' : '+ New Project'}
             </button>
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 mb-6">
+              {error}
+            </div>
+          )}
+
           {/* Create Project Form */}
           {showForm && (
-            <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <div className="card-lg p-6 mb-8">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Create New Project</h2>
               <form onSubmit={handleCreateProject} className="space-y-4">
-                <input
-                  type="text"
-                  placeholder="Project Name"
-                  value={newProject.name}
-                  onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
-                  required
-                />
-                <textarea
-                  placeholder="Description"
-                  value={newProject.description}
-                  onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
-                  rows="3"
-                />
-                <button
-                  type="submit"
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                >
-                  Create Project
-                </button>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Project Name *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter project name"
+                    value={newProject.name}
+                    onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
+                    className="input-field"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    placeholder="Enter project description"
+                    value={newProject.description}
+                    onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
+                    className="input-field"
+                    rows="3"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowForm(false)}
+                    className="btn-secondary flex-1"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary flex-1"
+                  >
+                    Create Project
+                  </button>
+                </div>
               </form>
             </div>
           )}
 
           {/* Projects Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map(project => (
-              <div key={project._id} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{project.name}</h3>
-                <p className="text-gray-600 text-sm mb-4">{project.description}</p>
-                <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                  <span>Owner: {project.owner?.name}</span>
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
-                    {project.status}
-                  </span>
-                </div>
-                <div className="mb-4">
-                  <p className="text-xs text-gray-500 mb-2">Members: {project.members?.length || 0}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {project.members?.slice(0, 3).map(member => (
-                      <div key={member.user?._id} className="text-xs bg-gray-100 px-2 py-1 rounded">
-                        {member.user?.name}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <a
-                  href={`/projects/${project._id}`}
-                  className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                >
-                  View Details →
-                </a>
-              </div>
-            ))}
-          </div>
+          {projects.length === 0 ? (
+            <div className="card-lg p-12 text-center">
+              <div className="text-5xl mb-4">📁</div>
+              <p className="text-gray-600 text-lg mb-4">No projects yet. Create your first project!</p>
+              <button
+                onClick={() => setShowForm(true)}
+                className="btn-primary"
+              >
+                Create Project
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projects.map(project => (
+                <ProjectCard key={project._id} project={project} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </>

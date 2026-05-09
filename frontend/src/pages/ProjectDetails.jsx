@@ -2,13 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { projectsAPI, tasksAPI } from '../services/api';
 import Navigation from '../components/Navigation';
+import TaskCard from '../components/TaskCard';
+import AddMemberModal from '../components/AddMemberModal';
 
 export default function ProjectDetails() {
   const { id } = useParams();
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [newTask, setNewTask] = useState({ title: '', description: '', priority: 'medium' });
+  const [showMemberModal, setShowMemberModal] = useState(false);
+  const [newTask, setNewTask] = useState({ 
+    title: '', 
+    description: '', 
+    priority: 'medium',
+    dueDate: ''
+  });
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
@@ -41,9 +49,9 @@ export default function ProjectDetails() {
     try {
       await tasksAPI.create({
         ...newTask,
-        projectId: id
+        project: id
       });
-      setNewTask({ title: '', description: '', priority: 'medium' });
+      setNewTask({ title: '', description: '', priority: 'medium', dueDate: '' });
       setShowForm(false);
       fetchTasks();
     } catch (error) {
@@ -51,138 +59,206 @@ export default function ProjectDetails() {
     }
   };
 
-  const updateTaskStatus = async (taskId, newStatus) => {
-    try {
-      await tasksAPI.update(taskId, { status: newStatus });
-      fetchTasks();
-    } catch (error) {
-      console.error('Failed to update task:', error);
-    }
-  };
-
   if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return (
+      <>
+        <Navigation />
+        <div className="flex justify-center items-center h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading project details...</p>
+          </div>
+        </div>
+      </>
+    );
   }
 
   return (
     <>
       <Navigation />
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           {/* Project Header */}
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{project?.name}</h1>
-            <p className="text-gray-600 mb-4">{project?.description}</p>
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-sm text-gray-500">Owner: <span className="font-semibold">{project?.owner?.name}</span></p>
-                <p className="text-sm text-gray-500">Members: <span className="font-semibold">{project?.members?.length || 0}</span></p>
+          <div className="card-lg p-8 mb-8">
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex-1">
+                <h1 className="text-4xl font-bold text-gradient mb-2">{project?.name}</h1>
+                <p className="text-gray-600 text-lg">{project?.description}</p>
               </div>
-              <span className="px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">
-                {project?.status}
+              <span className="badge-info text-sm px-4 py-2">
+                {project?.status.toUpperCase()}
               </span>
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-200">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Project Owner</p>
+                <p className="text-lg font-semibold text-gray-800">👤 {project?.owner?.name}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Team Members</p>
+                <p className="text-lg font-semibold text-gray-800">{project?.members?.length || 0} members</p>
+              </div>
+              <div>
+                <button
+                  onClick={() => setShowMemberModal(true)}
+                  className="btn-primary w-full"
+                >
+                  + Add Team Member
+                </button>
+              </div>
+            </div>
+
+            {/* Team Members List */}
+            {project?.members && project.members.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <p className="text-sm font-semibold text-gray-700 mb-3">Team Members</p>
+                <div className="flex flex-wrap gap-3">
+                  {project.members.map((member) => (
+                    <div
+                      key={member.user._id}
+                      className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg border border-blue-200"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white flex items-center justify-center text-sm font-bold">
+                        {member.user.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{member.user.name}</p>
+                        <p className="text-xs text-gray-600">{member.role}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Tasks Section */}
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-gray-900">Tasks</h2>
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">Tasks ({tasks.length})</h2>
               <button
                 onClick={() => setShowForm(!showForm)}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                className="btn-primary"
               >
-                {showForm ? 'Cancel' : 'Add Task'}
+                {showForm ? '✕ Cancel' : '+ Add Task'}
               </button>
             </div>
 
             {/* Add Task Form */}
             {showForm && (
-              <div className="bg-white rounded-lg shadow p-6 mb-6">
+              <div className="card-lg p-6 mb-6">
                 <form onSubmit={handleCreateTask} className="space-y-4">
-                  <input
-                    type="text"
-                    placeholder="Task Title"
-                    value={newTask.title}
-                    onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
-                    required
-                  />
-                  <textarea
-                    placeholder="Description"
-                    value={newTask.description}
-                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
-                    rows="3"
-                  />
-                  <select
-                    value={newTask.priority}
-                    onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
-                  >
-                    <option value="low">Low Priority</option>
-                    <option value="medium">Medium Priority</option>
-                    <option value="high">High Priority</option>
-                    <option value="urgent">Urgent Priority</option>
-                  </select>
-                  <button
-                    type="submit"
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                  >
-                    Create Task
-                  </button>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Task Title *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter task title"
+                      value={newTask.title}
+                      onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                      className="input-field"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      placeholder="Enter task description"
+                      value={newTask.description}
+                      onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                      className="input-field"
+                      rows="3"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Priority
+                      </label>
+                      <select
+                        value={newTask.priority}
+                        onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
+                        className="input-field"
+                      >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Due Date
+                      </label>
+                      <input
+                        type="date"
+                        value={newTask.dueDate}
+                        onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                        className="input-field"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowForm(false)}
+                      className="btn-secondary flex-1"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn-primary flex-1"
+                    >
+                      Create Task
+                    </button>
+                  </div>
                 </form>
               </div>
             )}
 
             {/* Tasks List */}
-            <div className="space-y-4">
-              {tasks.map(task => (
-                <div key={task._id} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{task.title}</h3>
-                      <p className="text-gray-600">{task.description}</p>
-                    </div>
-                    <select
-                      value={task.status}
-                      onChange={(e) => updateTaskStatus(task._id, e.target.value)}
-                      className="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 text-sm"
-                    >
-                      <option value="todo">To Do</option>
-                      <option value="in-progress">In Progress</option>
-                      <option value="completed">Completed</option>
-                      <option value="blocked">Blocked</option>
-                    </select>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div className="flex gap-2">
-                      <span className={`text-xs font-semibold px-2 py-1 rounded ${
-                        task.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                        task.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                        task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                        {task.priority}
-                      </span>
-                      {task.isOverdue && (
-                        <span className="text-xs font-semibold px-2 py-1 bg-red-100 text-red-800 rounded">
-                          Overdue
-                        </span>
-                      )}
-                    </div>
-                    {task.dueDate && (
-                      <span className="text-sm text-gray-500">
-                        Due: {new Date(task.dueDate).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+            {tasks.length === 0 ? (
+              <div className="card-lg p-12 text-center">
+                <div className="text-5xl mb-4">📋</div>
+                <p className="text-gray-600 text-lg">No tasks yet. Create your first task!</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {tasks.map(task => (
+                  <TaskCard
+                    key={task._id}
+                    task={task}
+                    projectMembers={project?.members}
+                    onTaskUpdate={fetchTasks}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Add Member Modal */}
+      {showMemberModal && (
+        <AddMemberModal
+          projectId={id}
+          currentMembers={project?.members}
+          onMemberAdded={() => {
+            setShowMemberModal(false);
+            fetchProjectDetails();
+          }}
+          onClose={() => setShowMemberModal(false)}
+        />
+      )}
     </>
   );
 }
