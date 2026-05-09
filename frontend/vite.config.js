@@ -12,5 +12,14 @@ export default defineConfig({
         changeOrigin: true,
       }
     }
+  },
+  preview: {
+    port: 8080,
+    host: '0.0.0.0',
+    allowedHosts: [
+      'team-task-manager-production-4308.up.railway.app',
+      'localhost',
+      '127.0.0.1'
+    ]
   }
 })
